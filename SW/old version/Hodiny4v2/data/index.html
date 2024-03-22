@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  </head>
+  <body>
+      
+    <h1>CLOCK v4</h1>
+    <p><a href="/on"><button class="button">Sync NTP</button></a></p>
+      <form action="/get">
+        <fieldset>
+          <legend>TIME</legend><br>
+          Set Date and Time:&nbsp;<input type="datetime-local" name="timeSetting" value="%TIMEVALUE%"><br><br>
+          <input type="checkbox" name="timeSync" id="AAA" value="true" %TIMESYNCON%>&nbsp;Sync TIME from NTP Server<br>
+          <input type="submit" class="button" name="TimeSubmit"/>
+        </fieldset>
+      </form>
+
+  <form action="/get">
+    <fieldset>
+      <legend>SETTING</legend><br>
+      <input type="hidden" name="setting">
+      Display 1:  <input type="checkbox" name="Disp1_on"  %DISP1ON%>&nbsp;ON/OFF&nbsp;&nbsp;Brightness:<input type="range" name="Disp1Bright" min="0" max="15" value="%DISP1BRIGHT%">Hours<br>
+      Display 2:  <input type="checkbox" name="Disp2_on"  %DISP2ON%>&nbsp;ON/OFF&nbsp;&nbsp;Brightness:<input type="range" name="Disp2Bright" min="0" max="15" value="%DISP2BRIGHT%">LED Ring<br>
+    <input type="submit">
+    </fieldset>
+    </form>
+</div>
+</body>
+
+</body>
+</html> 
