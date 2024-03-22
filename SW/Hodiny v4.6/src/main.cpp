@@ -10,14 +10,21 @@
 #include "SD.h"
 #include "SPI.h"
 
+#include <WiFi.h>
+#include "time.h"
+
 // Global variables
 
 bool sdCard = false;
-bool internet = true;
+bool internetStatus = false;
 
 // Variable to store Name and Password WIFI
 char ssid[15];
 char password[15];
+
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = 0;
+const int   daylightOffset_sec = 3600;
 
 // ************************************************************************************
 //
@@ -30,6 +37,8 @@ char password[15];
 //          0 - Reading successfull
 
 int readFile(fs::FS &fs, const char * path, char ssid[], char password[]);
+
+void printLocalTime();
 
 // ************************************************************************************
 //
@@ -96,13 +105,65 @@ void setup() {
   // End of Reading SD card
   // if it was successful sdCard = true
   // if not sdCard = false
-  if (sdCard == false) {
-    Serial.println("I don't have SSID and PASSWORD");
-  } else {
-    Serial.println("I have SSID and PASSWORD");
+  
+Serial.print(ssid);
+Serial.print("x");
+Serial.print(password);
+Serial.print("x");
+Serial.println("x");
+
+  // We can connect to the internet
+  if (sdCard == true) {
     
+    Serial.print("Connecting to ");
+    Serial.println(ssid);
+    
+    // ************************************************************************************
+
+    WiFi.begin(ssid, password);
+
+    // try to log in to the internet, if it doesn't work in 10 seconds, close it.
+    int i = 50;
+
+    while ( WiFi.status() != WL_CONNECTED ) {
+      delay(500);
+
+      i--;
+
+      Serial.print(".");
+      if ( i == 0) {
+        break;
+      }
+    }
+
+    if (i == 0) {  
+
+      Serial.println("");
+      Serial.println("Connection failed!");
+      internetStatus = false;
+        
+    } else {
+
+      Serial.println("");
+      Serial.println("WiFi connected.");
+
+      // Init and get the time
+      configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+      printLocalTime();
+
+      //disconnect WiFi as it's no longer needed
+      WiFi.disconnect(true);
+      WiFi.mode(WIFI_OFF);
+    }
   }
+    
+  
+  
 }
+
+
+  
+
 
 void loop() {
   // put your main code here, to run repeatedly:
@@ -148,4 +209,46 @@ int readFile (fs::FS &fs, const char * path, char ssid[], char password[]) {
     file.close();
 
     return 0;
+}
+
+void printLocalTime(){
+  
+  struct tm timeinfo;
+
+  if (!getLocalTime(&timeinfo)) {
+
+    Serial.println("Failed to obtain time");
+    return;
+
+  }
+
+  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+  Serial.print("Day of week: ");
+  Serial.println(&timeinfo, "%A");
+  Serial.print("Month: ");
+  Serial.println(&timeinfo, "%B");
+  Serial.print("Day of Month: ");
+  Serial.println(&timeinfo, "%d");
+  Serial.print("Year: ");
+  Serial.println(&timeinfo, "%Y");
+  Serial.print("Hour: ");
+  Serial.println(&timeinfo, "%H");
+  Serial.print("Hour (12 hour format): ");
+  Serial.println(&timeinfo, "%I");
+  Serial.print("Minute: ");
+  Serial.println(&timeinfo, "%M");
+  Serial.print("Second: ");
+  Serial.println(&timeinfo, "%S");
+
+  Serial.println("Time variables");
+
+  char timeHour[3];
+
+  strftime(timeHour,3, "%H", &timeinfo);
+  Serial.println(timeHour);
+  char timeWeekDay[10];
+  strftime(timeWeekDay,10, "%A", &timeinfo);
+  Serial.println(timeWeekDay);
+  Serial.println();
+
 }
