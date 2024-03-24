@@ -37,6 +37,10 @@ const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = 0;
 const int   daylightOffset_sec = 3600;
 
+int hours = 0;
+int minutes = 0;
+int seconds = 0;
+
 // ************************************************************************************
 //
 //      Declarations
@@ -50,6 +54,8 @@ const int   daylightOffset_sec = 3600;
 int readFile(fs::FS &fs, const char * path, char ssid[], char password[]);
 
 void printLocalTime();
+
+void getTime();
 
 // ************************************************************************************
 //
@@ -204,6 +210,14 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+  getTime();
+  Serial.print(hours);
+  Serial.print(":");
+  Serial.print(minutes);
+  Serial.print(":");
+  Serial.print(seconds);
+  Serial.print("\n");
+  delay(1000);
 }
 
 // ************************************************************************************
@@ -288,4 +302,21 @@ void printLocalTime(){
   Serial.println(timeWeekDay);
   Serial.println();
 
+  
+}
+
+void getTime() {
+  
+  struct tm timeinfo;
+
+  if (!getLocalTime(&timeinfo)) {
+
+    Serial.println("Failed to obtain time");
+    return;
+
+  }
+
+  hours = timeinfo.tm_hour;
+  minutes = timeinfo.tm_min;
+  seconds = timeinfo.tm_sec;
 }
