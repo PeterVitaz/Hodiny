@@ -24,6 +24,22 @@ U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);
 uint8_t u8log_buffer[U8LOG_WIDTH*U8LOG_HEIGHT];
 U8X8LOG u8x8log;
 
+// ***** Please set the number of devices you have *****
+// But the maximum default of 8 MAX72XX wil also work.
+//
+// 7segment Led Control 
+// pin 27 is connected to the DataIn 
+// pin 25 is connected to the CLK 
+// pin 26 is connected to LOAD 
+// 2x MAX7219
+//
+// Modified to work for ESP32
+#include <LedControl.h>
+LedControl lc=LedControl(27,25,26,2);
+
+/* we always wait a bit between updates of the display */
+unsigned long delaytime=500;
+
 // Global variables
 
 bool sdCard = false;
@@ -41,6 +57,21 @@ int hours = 0;
 int minutes = 0;
 int seconds = 0;
 
+
+// 7 segment code for max7219
+const byte num[11] ={ B01111110,   // 0 0x7E
+                      B00110000,   // 1 0x30
+                      B01101101,   // 2 0x6D
+                      B01111001,   // 3
+                      B00110011,   // 4
+                      B01011011,   // 5
+                      B01011111,   // 6
+                      B01110000,   // 7
+                      B01111111,   // 8
+                      B01111011,    // 9
+                      B00000000    // off
+              };
+
 // ************************************************************************************
 //
 //      Declarations
@@ -56,6 +87,10 @@ int readFile(fs::FS &fs, const char * path, char ssid[], char password[]);
 void printLocalTime();
 
 void getTime();
+
+void sendToDisp1(int hour, int minute, int second, byte led1, byte led2);
+
+void sendSec(int second, int minute);
 
 // ************************************************************************************
 //
@@ -198,10 +233,26 @@ void setup() {
       WiFi.disconnect(true);
       WiFi.mode(WIFI_OFF);
     }
-  }
+
     
+  }
+
+  // ************************************************************************************ 
+  // Init devices for MAX7219 
+  // we have already set the number of devices when we created the LedControl
+  int devices=lc.getDeviceCount();
+  //we have to init all devices in a loop
+  for(int address=0;address<devices;address++) {
+    /*The MAX72XX is in power-saving mode on startup*/
+    lc.shutdown(address,false);
+    /* Set the brightness to a medium values */
+    lc.setIntensity(address,15);
+    /* and clear the display */
+    lc.clearDisplay(address);
+  }
   
-  
+  u8x8.clearDisplay();
+ 
 }
 
 
@@ -210,14 +261,19 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+  int oldSeconds = seconds;
+  
   getTime();
-  Serial.print(hours);
-  Serial.print(":");
-  Serial.print(minutes);
-  Serial.print(":");
-  Serial.print(seconds);
-  Serial.print("\n");
-  delay(1000);
+  
+  if (oldSeconds == 59 && seconds == 0) {
+    sendToDisp1(hours, minutes, seconds, B00001111,B11111111);
+    sendSec(seconds, minutes);
+  } else if (seconds > oldSeconds) {
+    sendToDisp1(hours, minutes, seconds, B00001111,B11111111);
+    sendSec(seconds, minutes);
+  }
+    
+  delay(100);
 }
 
 // ************************************************************************************
@@ -319,4 +375,96 @@ void getTime() {
   hours = timeinfo.tm_hour;
   minutes = timeinfo.tm_min;
   seconds = timeinfo.tm_sec;
+}
+
+// ************************************************************************************
+// Display to 1. led display
+// DateTime, led colon, led dial
+void sendToDisp1(int hour, int minute, int second, byte led1, byte led2) {
+  //if (setting.getDisp2_ON() == false) led2 = 0;
+  
+  byte dispBuff[8] = {led1,0,0,0,0,0,0,led2};    // buffer send to 1. disp
+  byte dispBuffTemp[8] = {0,0,0,0,0,0,0,0};      // temporary buff used to transpose
+
+  
+  dispBuff[1] = num[second % 10];   // Seconds 1
+  dispBuff[2] = num[second / 10];   // Seconds 10
+  dispBuff[3] = num[minute % 10];   // Minutes 1
+  dispBuff[4] = num[minute / 10];   // Minutes 10
+  dispBuff[5] = num[hour % 10];     // Hours   1
+  dispBuff[6] = num[hour / 10];     // Hours   10
+
+  //Transpose
+  for(byte i=0;i<8;i++){
+    for(byte j=0;j<8;j++){
+      if( (dispBuff[i] & 1<<j) != 0)
+        dispBuffTemp[j]=dispBuffTemp[j] | (1<<i);
+    }
+  }
+  
+  // send to display
+  for(byte i=0;i<8;i++){
+    lc.setRow(0,i,dispBuffTemp[i]);
+  }
+}
+
+// Show LED RING 
+void sendSec(int second, int minute){
+  // Clear buffer
+  byte disp[8]={B00000000,
+                B00000000,
+                B00000000,
+                B00000000,
+                B00000000,
+                B00000000,
+                B00000000,
+                B00000000};
+
+  // Get second as byte and check if is 0-59 
+  if (second > 59){
+    Serial.println("Chyba v sekundach!!");
+    return;
+  }
+  
+  byte row = second / 8;
+  byte rowIndex = second % 8;
+  Serial.println(second);
+  Serial.print("Row = ");
+  Serial.println(row);
+  Serial.print("RowIndex = ");
+  Serial.println(rowIndex);
+
+  if (row == 0 && rowIndex == 0 ){
+    
+    for(byte i = 0; i <8; i++){
+      disp[i] = B00000000;
+    }
+    // inner LED ring switch ON
+    disp[7] |= B00001111;
+    
+
+  } else {
+    for(byte i = 0; i < row; i++ ){
+      disp[i] = B11111111;
+    }
+    disp[row] = ~(B11111111>>rowIndex);
+    // inner LED ring switch ON
+    disp[7] |= B00001111;
+  }
+  
+  // if minutes is ODD, bitwise NOT
+  if ( (minute % 2) != 0 ) {
+    for (int i = 0; i < 8; i++){
+      disp[i] = ~disp[i];
+    }
+    disp[7] |= B00001111;
+  } 
+  
+  // send to led ring
+  for(byte i = 0; i < 8; i++){
+      if (i <7)
+        lc.setColumn(1,i + 1, disp[i]);
+      else
+        lc.setColumn(1,0,disp[i]);
+  }
 }

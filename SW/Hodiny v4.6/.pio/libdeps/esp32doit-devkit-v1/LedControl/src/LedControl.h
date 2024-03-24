@@ -27,7 +27,22 @@
 #ifndef LedControl_h
 #define LedControl_h
 
+// My update to work with ESP32
+/*
 #include <avr/pgmspace.h>
+
+#if (ARDUINO >= 100)
+#include <Arduino.h>
+#else
+#include <WProgram.h>
+#endif
+*/
+
+#if (defined(__AVR__))
+#include <avr\pgmspace.h>
+#else
+#include <pgmspace.h>
+#endif
 
 #if (ARDUINO >= 100)
 #include <Arduino.h>
