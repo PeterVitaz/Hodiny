@@ -12,6 +12,17 @@
 
 #include <WiFi.h>
 #include "time.h"
+#include <Wire.h>
+// Universal 8bit Graphics Library (https://github.com/olikraus/u8g2/)
+//#include <U8g2lib.h>
+#include <U8x8lib.h>
+//U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE); 
+
+#define U8LOG_WIDTH 16
+#define U8LOG_HEIGHT 8
+uint8_t u8log_buffer[U8LOG_WIDTH*U8LOG_HEIGHT];
+U8X8LOG u8x8log;
 
 // Global variables
 
@@ -47,13 +58,30 @@ void printLocalTime();
 // ************************************************************************************
 
 void setup() {
-
+  
+  delay(500);
+  
   Serial.begin(115200);
-
+  
+  // Oled SSD1306 init I2C
+  // work as terminal, update with newline
+  // 16 character per line
+  u8x8.begin();
+  u8x8.setFont(u8x8_font_victoriamedium8_r);
+  
+  u8x8log.begin(u8x8, U8LOG_WIDTH, U8LOG_HEIGHT, u8log_buffer);
+  u8x8log.setRedrawMode(0);		// 0: Update screen with newline, 1: Update screen for every char
+  u8x8log.print("\f");
+  u8x8log.print("Starting...\n");
+  u8x8log.print("\n");
+  u8x8log.print("Hodiny v4.6\n");
+  u8x8log.print("\n");
+  
   // Read SD card first
   if (!SD.begin(5)) {
 
     Serial.println("Card Mount Failed");
+    u8x8log.print("Card Mount Fail\n");
     sdCard = false;
     //return;
 
@@ -64,28 +92,36 @@ void setup() {
     if (cardType == CARD_NONE) {
 
       Serial.println("No SD card attached");
+      u8x8log.print("No SD card\n");
+
       sdCard = false;
       //return;
 
     } else {
 
       Serial.print("SD Card Type: ");
+      u8x8log.print("SD Card: ");
 
       if (cardType == CARD_MMC) {
 
         Serial.println("MMC");
+        u8x8log.print("MMC\n");
 
       } else if (cardType == CARD_SD) {
 
         Serial.println("SDSC");
-      
+        u8x8log.print("SDSC\n");
+
       } else if (cardType == CARD_SDHC) {
 
         Serial.println("SDHC");
+        u8x8log.print("SDHC\n");
 
       } else {
 
         Serial.println("UNKNOWN");
+        u8x8log.print("xxx\n");
+
       }
       
       // Read ssid and password from SD Card
@@ -106,18 +142,16 @@ void setup() {
   // if it was successful sdCard = true
   // if not sdCard = false
   
-Serial.print(ssid);
-Serial.print("x");
-Serial.print(password);
-Serial.print("x");
-Serial.println("x");
 
   // We can connect to the internet
   if (sdCard == true) {
     
     Serial.print("Connecting to ");
     Serial.println(ssid);
-    
+    u8x8log.print("Connecting to: \n");
+    u8x8log.print(ssid);
+    u8x8log.print("\n");
+
     // ************************************************************************************
 
     WiFi.begin(ssid, password);
@@ -140,12 +174,15 @@ Serial.println("x");
 
       Serial.println("");
       Serial.println("Connection failed!");
+      u8x8log.print("Connection fail\n");
+                    
       internetStatus = false;
         
     } else {
 
       Serial.println("");
       Serial.println("WiFi connected.");
+      u8x8log.print("WiFi connected.\n");
 
       // Init and get the time
       configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
