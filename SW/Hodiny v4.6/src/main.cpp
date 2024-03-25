@@ -99,6 +99,8 @@ void sendToDisp1(int hour, int minute, int second, byte led1, byte led2);
 
 void sendSec(int second, int minute);
 
+void updateTimeNTP();
+
 // ************************************************************************************
 //
 //      SETUP
@@ -121,7 +123,7 @@ void setup() {
   u8x8.setFont(u8x8_font_victoriamedium8_r);
   
   u8x8log.begin(u8x8, U8LOG_WIDTH, U8LOG_HEIGHT, u8log_buffer);
-  u8x8log.setRedrawMode(0);		// 0: Update screen with newline, 1: Update screen for every char
+  u8x8log.setRedrawMode(1);		// 0: Update screen with newline, 1: Update screen for every char
   u8x8log.print("\f");
   u8x8log.print("Starting...\n");
   u8x8log.print("\n");
@@ -239,6 +241,8 @@ void setup() {
       configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
       printLocalTime();
 
+      internetStatus = true;
+
       //disconnect WiFi as it's no longer needed
       WiFi.disconnect(true);
       WiFi.mode(WIFI_OFF);
@@ -287,9 +291,10 @@ void loop() {
   currentStateBtn = digitalRead(BUTTON_PIN);
   
   //Serial.println(currentStateBtn);
-  if(lastStateBtn == LOW && currentStateBtn == HIGH)
+  if(lastStateBtn == LOW && currentStateBtn == HIGH){
     Serial.println("The state changed from LOW to HIGH");
-
+    updateTimeNTP();
+  }
   // save the last state
   lastStateBtn = currentStateBtn;  
   delay(100);
@@ -396,6 +401,7 @@ void getTime() {
   seconds = timeinfo.tm_sec;
 }
 
+
 // ************************************************************************************
 // Display to 1. led display
 // DateTime, led colon, led dial
@@ -486,4 +492,55 @@ void sendSec(int second, int minute){
       else
         lc.setColumn(1,0,disp[i]);
   }
+}
+
+void updateTimeNTP() {
+
+  u8x8log.print("Connecting to: \n");
+  u8x8log.print(ssid);
+  u8x8log.print("\n");
+  
+  WiFi.begin(ssid, password);
+
+  // try to log in to the internet, if it doesn't work in 10 seconds, close it.
+  int i = 50;
+
+  while ( WiFi.status() != WL_CONNECTED ) {
+    delay(500);
+
+    i--;
+
+    Serial.print(".");
+    u8x8log.print(".");
+    if ( i == 0) {
+      break;
+    }
+  }
+
+    if (i == 0) {  
+
+      Serial.println("");
+      Serial.println("Connection failed!");
+      u8x8log.print("Connection fail\n");
+                    
+      internetStatus = false;
+        
+    } else {
+
+      Serial.println("");
+      Serial.println("WiFi connected.");
+      u8x8log.print("WiFi connected.\n");
+
+      // Init and get the time
+      configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+      printLocalTime();
+      u8x8log.print("Time updated.\n");
+      internetStatus = true;
+      
+      //disconnect WiFi as it's no longer needed
+      WiFi.disconnect(true);
+      WiFi.mode(WIFI_OFF);
+    }
+    delay(500);
+    u8x8.clearDisplay();
 }
