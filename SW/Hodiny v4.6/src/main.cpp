@@ -40,6 +40,10 @@ LedControl lc=LedControl(27,25,26,2);
 /* we always wait a bit between updates of the display */
 unsigned long delaytime=500;
 
+#define BUTTON_PIN 4 // GPIO04 pin connected to button
+
+
+
 // Global variables
 
 bool sdCard = false;
@@ -71,6 +75,9 @@ const byte num[11] ={ B01111110,   // 0 0x7E
                       B01111011,    // 9
                       B00000000    // off
               };
+
+int lastStateBtn = HIGH; // the previous state from the input pin
+int currentStateBtn;     // the current reading from the input pin
 
 // ************************************************************************************
 //
@@ -104,6 +111,9 @@ void setup() {
   
   Serial.begin(115200);
   
+  // Set pullup to D04
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+
   // Oled SSD1306 init I2C
   // work as terminal, update with newline
   // 16 character per line
@@ -272,7 +282,16 @@ void loop() {
     sendToDisp1(hours, minutes, seconds, B00001111,B11111111);
     sendSec(seconds, minutes);
   }
-    
+
+  // Read state of Button
+  currentStateBtn = digitalRead(BUTTON_PIN);
+  
+  //Serial.println(currentStateBtn);
+  if(lastStateBtn == LOW && currentStateBtn == HIGH)
+    Serial.println("The state changed from LOW to HIGH");
+
+  // save the last state
+  lastStateBtn = currentStateBtn;  
   delay(100);
 }
 
