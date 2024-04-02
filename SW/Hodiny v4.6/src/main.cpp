@@ -101,6 +101,8 @@ void sendSec(int second, int minute);
 
 void updateTimeNTP();
 
+void setTimezone(String timezone);
+
 // ************************************************************************************
 //
 //      SETUP
@@ -238,7 +240,9 @@ void setup() {
       u8x8log.print("WiFi connected.\n");
 
       // Init and get the time
-      configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+      //configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+      configTime(0, 0, "pool.ntp.org");    // First connect to NTP server, with 0 TZ offset
+      setTimezone("CET-1CEST,M3.5.0,M10.5.0/3");
       printLocalTime();
 
       internetStatus = true;
@@ -269,7 +273,11 @@ void setup() {
  
 }
 
-
+// ************************************************************************************
+//
+//      Main Loop
+//
+// ************************************************************************************
   
 
 
@@ -532,7 +540,11 @@ void updateTimeNTP() {
       u8x8log.print("WiFi connected.\n");
 
       // Init and get the time
-      configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+      // configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+      configTime(0, 0, "pool.ntp.org");    // First connect to NTP server, with 0 TZ offset
+      setTimezone("CET-1CEST,M3.5.0,M10.5.0/3");
+
+
       printLocalTime();
       u8x8log.print("Time updated.\n");
       internetStatus = true;
@@ -543,4 +555,12 @@ void updateTimeNTP() {
     }
     delay(500);
     u8x8.clearDisplay();
+}
+
+
+// Setup TIMEZONE
+void setTimezone(String timezone){
+  Serial.printf("  Setting Timezone to %s\n",timezone.c_str());
+  setenv("TZ",timezone.c_str(),1);  //  Now adjust the TZ.  Clock settings are adjusted to show the new local time
+  tzset();
 }
