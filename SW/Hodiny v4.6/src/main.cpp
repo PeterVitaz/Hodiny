@@ -287,6 +287,10 @@ void loop() {
   
   getTime();
   
+  if (hours == 23 && minutes == 59 && seconds == 0) {
+    updateTimeNTP();
+  }
+
   if (oldSeconds == 59 && seconds == 0) {
     sendToDisp1(hours, minutes, seconds, B00001111,B11111111);
     sendSec(seconds, minutes);
@@ -461,11 +465,11 @@ void sendSec(int second, int minute){
   
   byte row = second / 8;
   byte rowIndex = second % 8;
-  Serial.println(second);
-  Serial.print("Row = ");
-  Serial.println(row);
-  Serial.print("RowIndex = ");
-  Serial.println(rowIndex);
+ // Serial.println(second);
+ // Serial.print("Row = ");
+ // Serial.println(row);
+ // Serial.print("RowIndex = ");
+ // Serial.println(rowIndex);
 
   if (row == 0 && rowIndex == 0 ){
     
